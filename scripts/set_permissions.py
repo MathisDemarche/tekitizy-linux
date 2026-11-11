@@ -15,7 +15,7 @@ def nettoyer_groupe(nom):
     nom = unicodedata.normalize("NFD", nom)
     nom = "".join(c for c in nom if unicodedata.category(c) != "Mn")
     nom = nom.lower().strip()
-    nom = nom.replace(" ", "_").replace("-", "_").replace("'", "")
+    nom = nom.replace(" ", "").replace("-", "").replace("'", "")
     nom = "".join(c for c in nom if c in "abcdefghijklmnopqrstuvwxyz0123456789_")
     return nom
 
