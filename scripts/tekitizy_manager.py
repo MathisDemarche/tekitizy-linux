@@ -13,7 +13,7 @@ def nettoyer(texte):
     texte = unicodedata.normalize("NFD", texte)
     texte = "".join(c for c in texte if unicodedata.category(c) != "Mn")
     texte = texte.lower()
-    texte = "".join(c for c in texte if c.isalnum())
+    texte = "".join(c for c in texte if c in "abcdefghijklmnopqrstuvwxyz0123456789")
     return texte
 
 
