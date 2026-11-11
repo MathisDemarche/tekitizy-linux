@@ -1,13 +1,19 @@
 
 #!/bin/bash
 
+# ==========================================
+# TEKITIZY - Gestion des utilisateurs
+# ==========================================
+
 # Vérifier les droits administrateur
 if [ "$EUID" -ne 0 ]; then
     echo "Erreur : lancez avec sudo."
     exit 1
 fi
 
-echo "=== TEKITIZY : GESTION DES UTILISATEURS ==="
+echo "=========================================="
+echo "       TEKITIZY - CREATION DES COMPTES"
+echo "=========================================="
 
 # Vérifier Python
 if ! command -v python3 > /dev/null 2>&1; then
@@ -15,13 +21,19 @@ if ! command -v python3 > /dev/null 2>&1; then
     exit 1
 fi
 
-# Lancer le programme Python
+# Vérifier le fichier Python
+if [ ! -f "scripts/tekitizy_manager.py" ]; then
+    echo "Erreur : programme Python introuvable."
+    exit 1
+fi
+
+# Lancer Python
 python3 scripts/tekitizy_manager.py
 
-# Vérifier si le programme a fonctionné
+# Vérifier le résultat
 if [ $? -eq 0 ]; then
-    echo "Gestion des identifiants terminée."
+    echo "TEKITIZY : opération terminée."
 else
-    echo "Erreur lors de l'exécution du programme Python."
+    echo "Erreur pendant la gestion des utilisateurs."
     exit 1
 fi

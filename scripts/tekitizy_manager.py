@@ -1,65 +1,154 @@
 
 import csv
 import unicodedata
+import subprocess
 
-# Ouvrir le fichier CSV
-with open("config/tekitizy_users.csv", encoding="utf-8-sig") as fichier:
+# Fichiers du projet
+FICHIER_CSV = "config/tekitizy_users.csv"
+FICHIER_LOGINS = "config/tekitizy_logins.csv"
+
+
+# Nettoyer les noms pour les logins et les groupes
+def nettoyer(texte):
+    texte = unicodedata.normalize("NFD", texte)
+    texte = "".join(c for c in texte if unicodedata.category(c) != "Mn")
+    texte = texte.lower()
+    texte = "".join(c for c in texte if c.isalnum())
+    return texte
+
+
+# Charger les anciens identifiants
+anciens = {}
+
+try:
+    with open(FICHIER_LOGINS, encoding="utf-8") as fichier:
+        lecteur = csv.DictReader(fichier)
+
+        for ligne in lecteur:
+            anciens[ligne["Matricule"]] = ligne["Login"]
+
+except FileNotFoundError:
+    pass
+
+
+# Lire les salariés
+with open(FICHIER_CSV, encoding="utf-8-sig", newline="") as fichier:
     lecteurs = csv.DictReader(fichier)
 
-    # Lire les anciens identifiants
-    anciens = {}
+    for salarie in lecteurs:
 
-    try:
-        with open("config/tekitizy_logins.csv", encoding="utf-8") as fichier_logins:
-            for ligne in csv.DictReader(fichier_logins):
-                anciens[ligne["Matricule"]] = ligne["Login"]
-    except FileNotFoundError:
-        pass
+        matricule = salarie["Matricule"].strip()
+        prenom = salarie["Prénom"].strip()
+        nom = salarie["Nom"].strip()
+        date = salarie["DateNaissance"].strip()
 
-    # Préparer le nouveau fichier
-    with open("config/tekitizy_logins.csv", "w", newline="", encoding="utf-8") as sortie:
-        ecrivain = csv.writer(sortie)
-        ecrivain.writerow(["Matricule", "Login"])
+        pole = salarie["Pole"].strip()
+        sous_service = salarie["SousService"].strip()
+        projets = salarie["Projet"].strip()
 
-        logins = []
+        # Récupérer ou générer le login
+        if matricule in anciens:
+            login = anciens[matricule]
 
-        for salarie in lecteurs:
-            matricule = salarie["Matricule"].strip()
-            prenom = salarie["Prénom"].strip()
-            nom = salarie["Nom"].strip()
+        else:
+            login = nettoyer(prenom[0] + nom)
+            login = login[:8]
 
-            # Garder l'ancien login si le salarié existe déjà
-            if matricule in anciens:
-                login = anciens[matricule]
+            base = login[:6]
+            compteur = 1
 
-            else:
-                # Créer le login
-                login = prenom[0] + nom
+            while login in anciens.values():
+                login = base + str(compteur).zfill(2)
+                compteur += 1
 
-                # Supprimer les accents
-                login = unicodedata.normalize("NFD", login)
-                login = "".join(c for c in login if unicodedata.category(c) != "Mn")
+            anciens[matricule] = login
 
-                # Mettre en minuscules
-                login = login.lower()
+        # Préparer les groupes
+        groupes = ["personnel"]
 
-                # Garder uniquement les lettres et chiffres
-                login = "".join(c for c in login if c.isalnum())
+        if pole:
+            groupes.append(nettoyer(pole))
 
-                # Limiter à 8 caractères
-                login = login[:8]
+        if sous_service:
+            groupes.append(nettoyer(sous_service))
 
-                # Vérifier les doublons
-                base = login[:6]
-                compteur = 1
+        if projets:
+            for projet in projets.split(";"):
+                projet = nettoyer(projet.strip())
 
-                while login in logins:
-                    login = base + str(compteur).zfill(2)
-                    compteur += 1
+                if projet:
+                    groupes.append(projet)
 
-            logins.append(login)
+        # Supprimer les doublons de groupes
+        groupes = list(dict.fromkeys(groupes))
 
-            # Enregistrer le salarié
-            ecrivain.writerow([matricule, login])
+        print("Traitement de :", prenom, nom)
 
-            print(matricule, login)
+        # Créer les groupes
+        for groupe in groupes:
+            resultat = subprocess.run(
+                ["groupadd", "-f", groupe],
+                capture_output=True,
+                text=True
+            )
+
+            if resultat.returncode != 0:
+                print("Erreur groupe :", groupe, resultat.stderr)
+                continue
+
+        # Vérifier si l'utilisateur existe
+        resultat = subprocess.run(
+            ["id", login],
+            capture_output=True
+        )
+
+        if resultat.returncode != 0:
+
+            # Créer l'utilisateur
+            subprocess.run(
+                ["useradd", "-m", "-s", "/bin/bash", login],
+                check=True
+            )
+
+            # Définir le mot de passe initial JJMMAAAA
+            jour, mois, annee = date.split("/")
+            mot_de_passe = jour + mois + annee
+
+            subprocess.run(
+                ["chpasswd"],
+                input=login + ":" + mot_de_passe + "\n",
+                text=True,
+                check=True
+            )
+
+            # Forcer le changement du mot de passe
+            subprocess.run(
+                ["chage", "-d", "0", login],
+                check=True
+            )
+
+            print("Utilisateur créé :", login)
+
+        else:
+            print("Utilisateur déjà existant :", login)
+
+        # Ajouter les groupes à l'utilisateur
+        subprocess.run(
+            ["usermod", "-aG", ",".join(groupes), login],
+            check=True
+        )
+
+        print("Groupes :", ", ".join(groupes))
+        print("-----------------------------")
+
+
+# Enregistrer les identifiants
+with open(FICHIER_LOGINS, "w", encoding="utf-8", newline="") as fichier:
+    ecrivain = csv.writer(fichier)
+
+    ecrivain.writerow(["Matricule", "Login"])
+
+    for matricule, login in anciens.items():
+        ecrivain.writerow([matricule, login])
+
+print("Gestion des utilisateurs terminée.")
