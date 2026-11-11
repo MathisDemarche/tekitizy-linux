@@ -113,7 +113,7 @@ def main():
                 projet = projet.strip()
 
                 if projet:
-                    groupe_projet = "projet" + nettoyer_groupe(projet)
+                    groupe_projet = nettoyer_groupe(projet)
                     dossier_projet = nettoyer_dossier(projet)
 
                     configurer_dossier(
