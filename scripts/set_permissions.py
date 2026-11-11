@@ -114,8 +114,6 @@ def main():
 
                 if projet:
                     groupe_projet = nettoyer_groupe(projet)
-                    if not groupe_projet.startswith("projet_"):
-                        groupe_projet = "projet_" + groupe_projet
                     dossier_projet = nettoyer_dossier(projet)
 
                     configurer_dossier(
