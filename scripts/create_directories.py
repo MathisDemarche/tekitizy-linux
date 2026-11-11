@@ -1,73 +1,161 @@
 
+#!/usr/bin/env python3
+
 import csv
 import os
-import unicodedata
-import re
+import pwd
 
-# Fonction pour nettoyer les noms des dossiers
-def nettoyer(nom):
+FICHIER_UTILISATEURS = "config/tekitizy_users.csv"
+FICHIER_LOGINS = "config/tekitizy_logins.csv"
+
+
+def nettoyer_dossier(nom):
+    import unicodedata
+
     nom = unicodedata.normalize("NFD", nom)
     nom = "".join(c for c in nom if unicodedata.category(c) != "Mn")
-
-    nom = nom.strip()
-    nom = re.sub(r"[\s-]+", "_", nom)
-    nom = nom.replace("'", "")
+    nom = nom.upper().strip()
+    nom = nom.replace(" ", "_").replace("-", "_").replace("'", "")
+    nom = "".join(c for c in nom if c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")
 
     return nom
 
 
-# Vérifier le fichier CSV
-fichier_csv = "config/tekitizy_users.csv"
-
-if not os.path.exists(fichier_csv):
-    print("Erreur : fichier CSV introuvable.")
-    exit(1)
+def creer_lien(source, destination):
+    if not os.path.exists(destination) and not os.path.islink(destination):
+        os.symlink(source, destination)
 
 
-# Créer les dossiers principaux
-os.makedirs("/SERVICES/COMMUN", exist_ok=True)
-os.makedirs("/PROJETS", exist_ok=True)
-os.makedirs("/ARCHIVES", exist_ok=True)
+def main():
 
-# Lire les salariés
-with open(fichier_csv, encoding="utf-8-sig", newline="") as fichier:
-    lecteurs = csv.DictReader(fichier)
+    if os.geteuid() != 0:
+        print("Erreur : lancez ce programme avec sudo.")
+        return
 
-    for salarie in lecteurs:
+    logins = {}
 
-        pole = salarie["Pole"].strip()
-        sous_service = salarie["SousService"].strip()
-        projets = salarie["Projet"].strip()
+    with open(FICHIER_LOGINS, newline="", encoding="utf-8") as fichier:
+        lecteur = csv.DictReader(fichier)
 
-        # Créer le dossier du pôle
-        if pole:
-            nom_pole = nettoyer(pole)
-            dossier_pole = "/SERVICES/" + nom_pole
+        for ligne in lecteur:
+            logins[ligne["Matricule"]] = ligne["Login"]
 
-            os.makedirs(dossier_pole, exist_ok=True)
+    os.makedirs("/SERVICES/COMMUN", exist_ok=True)
+    os.makedirs("/PROJETS", exist_ok=True)
+    os.makedirs("/ARCHIVES", exist_ok=True)
 
-            print("Dossier créé :", dossier_pole)
+    with open(FICHIER_UTILISATEURS, newline="", encoding="utf-8-sig") as fichier:
+        lecteur = csv.DictReader(fichier)
 
-        # Créer le dossier du sous-service
-        if pole and sous_service:
-            nom_service = nettoyer(sous_service)
-            dossier_service = dossier_pole + "/" + nom_service
+        for ligne in lecteur:
 
-            os.makedirs(dossier_service, exist_ok=True)
+            matricule = ligne["Matricule"]
 
-            print("Dossier créé :", dossier_service)
+            if matricule not in logins:
+                print("Login introuvable :", matricule)
+                continue
 
-        # Créer les dossiers des projets
-        if projets:
-            for projet in projets.split(";"):
-                nom_projet = nettoyer(projet.strip())
+            login = logins[matricule]
 
-                if nom_projet:
-                    dossier_projet = "/PROJETS/" + nom_projet
+            try:
+                utilisateur = pwd.getpwnam(login)
+            except KeyError:
+                print("Utilisateur introuvable :", login)
+                continue
 
-                    os.makedirs(dossier_projet, exist_ok=True)
+            # Dossiers du pôle et du sous-service
+            pole = ligne["Pole"].strip()
+            sous_service = ligne["SousService"].strip()
 
-                    print("Dossier créé :", dossier_projet)
+            dossier_pole = nettoyer_dossier(pole)
+
+            if pole:
+                os.makedirs("/SERVICES/" + dossier_pole, exist_ok=True)
+
+            if pole and sous_service:
+                dossier_service = nettoyer_dossier(sous_service)
+
+                os.makedirs(
+                    "/SERVICES/" + dossier_pole + "/" + dossier_service,
+                    exist_ok=True
+                )
+
+            # Dossiers des projets
+            projets = ligne["Projet"].split(";")
+
+            for projet in projets:
+                projet = projet.strip()
+
+                if projet:
+                    dossier_projet = nettoyer_dossier(projet)
+
+                    os.makedirs(
+                        "/PROJETS/" + dossier_projet,
+                        exist_ok=True
+                    )
+
+            # Dossiers personnels
+            dossier_personnel = "/home/" + login
+
+            os.makedirs(dossier_personnel, exist_ok=True)
+
+            os.chown(
+                dossier_personnel,
+                utilisateur.pw_uid,
+                utilisateur.pw_gid
+            )
+
+            # Sous-dossiers personnels
+            dossiers = [
+                "Documents",
+                "Projets",
+                "Workspace",
+                "Téléchargements",
+                "Partage"
+            ]
+
+            for dossier in dossiers:
+                chemin = dossier_personnel + "/" + dossier
+                os.makedirs(chemin, exist_ok=True)
+
+                os.chown(
+                    chemin,
+                    utilisateur.pw_uid,
+                    utilisateur.pw_gid
+                )
+
+            # Liens symboliques des projets
+            for projet in projets:
+                projet = projet.strip()
+
+                if projet:
+                    dossier_projet = nettoyer_dossier(projet)
+
+                    creer_lien(
+                        "/PROJETS/" + dossier_projet,
+                        dossier_personnel + "/Projets/" + dossier_projet
+                    )
+
+            # Lien du pôle dans Partage
+            if pole:
+                creer_lien(
+                    "/SERVICES/" + dossier_pole,
+                    dossier_personnel + "/Partage/" + dossier_pole
+                )
+
+            # Lien du sous-service dans Partage
+            if pole and sous_service:
+                dossier_service = nettoyer_dossier(sous_service)
+
+                creer_lien(
+                    "/SERVICES/" + dossier_pole + "/" + dossier_service,
+                    dossier_personnel + "/Partage/" + dossier_service
+                )
+
+            print("Dossiers créés :", login)
+
+    print("\nTEKITIZY : création des dossiers terminée.")
 
 
-print("Création des dossiers terminée.")
+if __name__ == "__main__":
+    main()
