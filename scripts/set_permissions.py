@@ -30,17 +30,18 @@ def nettoyer_dossier(nom):
 
 
 def configurer_dossier(chemin, groupe):
-    if not grp.getgrnam(groupe):
+    try:
+        gid = grp.getgrnam(groupe).gr_gid
+    except KeyError:
+        print("Erreur : groupe introuvable :", groupe)
         return
 
     os.makedirs(chemin, exist_ok=True)
 
-    gid = grp.getgrnam(groupe).gr_gid
-
     os.chown(chemin, 0, gid)
     os.chmod(chemin, 0o2770)
 
-    print(f"Droits configurés : {chemin}")
+    print("Droits configurés :", chemin)
 
 
 def main():
