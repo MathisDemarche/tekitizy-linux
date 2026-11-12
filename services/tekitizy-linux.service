@@ -1,0 +1,18 @@
+[Unit]
+Description=TEKITIZY - Gestion automatique des utilisateurs
+After=local-fs.target
+Before=display-manager.service
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/home/ubuntu/Documents/tekitizy-linux
+
+ExecStart=/bin/bash scripts/create_users.sh
+ExecStart=/bin/bash scripts/create_directories.sh
+ExecStart=/bin/bash scripts/set_permissions.sh
+
+RemainAfterExit=yes
+
+[Install]
+WantedBy=graphical.target
