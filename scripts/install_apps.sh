@@ -11,6 +11,16 @@ echo "=== tekitizy LINUX : INSTALLATION ==="
 # Mise à jour
 apt update
 
+ARCHITECTURE=$(dpkg --print-architecture)
+case "$ARCHITECTURE" in
+    amd64) VSCODE_ARCH="x64" ;;
+    arm64) VSCODE_ARCH="arm64" ;;
+    *)
+        echo "Erreur : architecture non prise en charge : $ARCHITECTURE"
+        exit 1
+        ;;
+esac
+
 # Installation des logiciels classiques
 echo "Installation des outils de développement..."
 
@@ -31,22 +41,42 @@ apt install -y \
     acl
 
 # Installation de Firefox
-apt install -y firefox
+if apt-cache show firefox >/dev/null 2>&1; then
+    apt install -y firefox
+elif apt-cache show firefox-esr >/dev/null 2>&1; then
+    apt install -y firefox-esr
+else
+    echo "Erreur : aucun paquet Firefox disponible."
+    exit 1
+fi
 
-# Installation de Google Chrome
-echo "Installation de Google Chrome..."
+# Installation de Chromium
+echo "Installation de Chromium..."
 
-wget -O chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-apt update
-apt install -y ./chrome.deb
-rm chrome.deb
+if apt-cache show chromium >/dev/null 2>&1; then
+    apt install -y chromium
+elif apt-cache show chromium-browser >/dev/null 2>&1; then
+    apt install -y chromium-browser
+else
+    echo "Erreur : aucun paquet Chromium disponible."
+    exit 1
+fi
 
 # Installation de Visual Studio Code
 echo "Installation de VS Code..."
 
-wget -O code.deb https://update.code.visualstudio.com/latest/linux-deb-x64/stable
+if ! wget --tries=3 --timeout=30 -O code.deb \
+    "https://update.code.visualstudio.com/latest/linux-deb-$VSCODE_ARCH/stable"; then
+    echo "Erreur : téléchargement de VS Code impossible."
+    rm -f code.deb
+    exit 1
+fi
+
 apt update
-apt install -y ./code.deb
-rm code.deb
+if ! apt install -y ./code.deb; then
+    rm -f code.deb
+    exit 1
+fi
+rm -f code.deb
 
 echo "=== INSTALLATION TERMINEE ==="

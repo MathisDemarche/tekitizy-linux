@@ -27,6 +27,32 @@ creer_lien() {
     fi
 }
 
+supprimer_anciens_liens_projets() {
+    local login="$1"
+    local projets="$2"
+    local home="/home/$login"
+    local lien dossier_projet
+    local conserves=" "
+    local -a liste_projets
+
+    IFS=';' read -r -a liste_projets <<< "$projets"
+    for projet in "${liste_projets[@]}"; do
+        projet=$(retirer_espaces "$projet")
+        [[ -z "$projet" ]] && continue
+        dossier_projet=$(nettoyer_dossier "$projet")
+        conserves="${conserves}${dossier_projet} "
+    done
+
+    [[ -d "$home/Projets" ]] || return 0
+
+    for lien in "$home"/Projets/*; do
+        [[ -L "$lien" ]] || continue
+        dossier_projet=$(basename "$lien")
+        [[ " $conserves " == *" $dossier_projet "* ]] && continue
+        rm -f "$lien" || return 1
+    done
+}
+
 initialiser_dossiers() {
     creer_groupe personnel || return 1
 
@@ -77,7 +103,7 @@ creer_dossiers_utilisateur() {
     fi
 
     # Sous-service
-    dossier_sous_service=$(nettoyer_dossier "$sous_service")
+    dossier_sous_service=$(nettoyer_sous_service "$sous_service")
     if [[ -n "$pole" && -n "$sous_service" ]]; then
         configurer_partage "/SERVICES/$dossier_pole/$dossier_sous_service" "$sous_service" || return 1
         creer_lien "/SERVICES/$dossier_pole/$dossier_sous_service" "$home/Partage/$dossier_sous_service" || return 1

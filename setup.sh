@@ -89,6 +89,7 @@ sed "s|__DOSSIER__|$DOSSIER|g" "$SERVICE_SYSTEMD" \
 
 systemctl daemon-reload
 systemctl enable "$NOM_SERVICE"
+systemctl start "$NOM_SERVICE"
 
 echo "================================"
 echo " INSTALLATION TEKITIZY TERMINEE"

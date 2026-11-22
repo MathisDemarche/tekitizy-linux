@@ -1,7 +1,6 @@
 [Unit]
 Description=TEKITIZY - Gestion automatique des utilisateurs
 After=local-fs.target
-Before=display-manager.service
 
 [Service]
 Type=oneshot

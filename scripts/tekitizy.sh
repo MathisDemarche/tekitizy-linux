@@ -65,19 +65,10 @@ traiter_salarie() {
 
     login=$(creer_utilisateur "$matricule" "$prenom" "$nom" "$date_naissance") || return 1
 
-    ajouter_au_groupe "$login" personnel || afficher_erreur "Erreur : impossible d'ajouter $login au groupe personnel."
-    ajouter_au_groupe "$login" "$pole" || afficher_erreur "Erreur : impossible d'ajouter $login au groupe $pole."
-    ajouter_au_groupe "$login" "$sous_service" || afficher_erreur "Erreur : impossible d'ajouter $login au groupe $sous_service."
-
-    IFS=';' read -r -a liste_projets <<< "$projets"
-    for projet in "${liste_projets[@]}"; do
-        projet=$(retirer_espaces "$projet")
-        [[ -z "$projet" ]] && continue
-        ajouter_au_groupe "$login" "$projet" || afficher_erreur "Erreur : impossible d'ajouter $login au groupe $projet."
-    done
-
-    creer_dossiers_utilisateur "$login" "$pole" "$sous_service" "$projets" || afficher_erreur "Erreur lors de la création des dossiers pour $login."
-    installextensions "$login" || afficher_erreur "Erreur lors de l'installation des extensions pour $login."
+    ajouter_aux_groupes "$login" "$pole" "$sous_service" "$projets" || return 1
+    supprimer_anciens_liens_projets "$login" "$projets" || return 1
+    creer_dossiers_utilisateur "$login" "$pole" "$sous_service" "$projets" || return 1
+    installextensions "$login" || return 1
 
     echo "Identifiant : $login"
 

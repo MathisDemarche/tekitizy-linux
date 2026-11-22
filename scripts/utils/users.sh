@@ -85,3 +85,47 @@ ajouter_au_groupe() {
     creer_groupe "$groupe" || return 1
     usermod -aG "$groupe" "$login" || return 1
 }
+
+ajouter_aux_groupes() {
+    local login="$1"
+    local pole="$2"
+    local sous_service="$3"
+    local projets="$4"
+    local groupe liste_projets projet present
+    local -a groupes
+
+    groupes+=("personnel")
+
+    groupe=$(nettoyer_groupe "$pole")
+    [[ -n "$groupe" ]] && {
+        present=false
+        for projet in "${groupes[@]}"; do [[ "$projet" == "$groupe" ]] && present=true; done
+        [[ "$present" == false ]] && groupes+=("$groupe")
+    }
+
+    groupe=$(nettoyer_groupe "$sous_service")
+    [[ -n "$groupe" ]] && {
+        present=false
+        for projet in "${groupes[@]}"; do [[ "$projet" == "$groupe" ]] && present=true; done
+        [[ "$present" == false ]] && groupes+=("$groupe")
+    }
+
+    IFS=';' read -r -a liste_projets <<< "$projets"
+    for projet in "${liste_projets[@]}"; do
+        projet=$(retirer_espaces "$projet")
+        [[ -z "$projet" ]] && continue
+        groupe=$(nettoyer_groupe "$projet")
+        [[ -n "$groupe" ]] && {
+            present=false
+            for projet in "${groupes[@]}"; do [[ "$projet" == "$groupe" ]] && present=true; done
+            [[ "$present" == false ]] && groupes+=("$groupe")
+        }
+    done
+
+    for groupe in "${groupes[@]}"; do
+        creer_groupe "$groupe" || return 1
+    done
+
+    local IFS=','
+    usermod -G "${groupes[*]}" "$login" || return 1
+}
