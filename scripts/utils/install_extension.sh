@@ -54,7 +54,7 @@ installextensions() {
     for extension in "${extensions[@]}"; do
         echo "Installation de $extension..."
         if sudo -u "$login" env HOME="$home_dir" \
-            code --verbose --install-extension "$extension" --force; then
+            code --install-extension "$extension" --force; then
             echo "$extension : OK"
         else
             echo "Attention : impossible d'installer $extension."
