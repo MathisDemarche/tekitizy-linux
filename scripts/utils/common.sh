@@ -20,7 +20,7 @@ nettoyer_dossier() {
 nettoyer_sous_service() {
     printf '%s\n' "$1" |
         iconv -f UTF-8 -t ASCII//TRANSLIT 2>/dev/null |
-        sed 's/[ -]/_/g; s/'"'"'//g' |
+        sed "s/[ -]/_/g; s/'//g" |
         tr -cd 'A-Za-z0-9_-'
 }
 

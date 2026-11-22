@@ -32,23 +32,29 @@ supprimer_anciens_liens_projets() {
     local projets="$2"
     local home="/home/$login"
     local lien dossier_projet
-    local conserves=" "
+    local dossier_a_conserver
     local -a liste_projets
 
     IFS=';' read -r -a liste_projets <<< "$projets"
-    for projet in "${liste_projets[@]}"; do
-        projet=$(retirer_espaces "$projet")
-        [[ -z "$projet" ]] && continue
-        dossier_projet=$(nettoyer_dossier "$projet")
-        conserves="${conserves}${dossier_projet} "
-    done
-
     [[ -d "$home/Projets" ]] || return 0
 
     for lien in "$home"/Projets/*; do
         [[ -L "$lien" ]] || continue
+
         dossier_projet=$(basename "$lien")
-        [[ " $conserves " == *" $dossier_projet "* ]] && continue
+        dossier_a_conserver=""
+
+        for projet in "${liste_projets[@]}"; do
+            projet=$(retirer_espaces "$projet")
+            [[ -z "$projet" ]] && continue
+
+            if [[ "$(nettoyer_dossier "$projet")" == "$dossier_projet" ]]; then
+                dossier_a_conserver="oui"
+                break
+            fi
+        done
+
+        [[ -n "$dossier_a_conserver" ]] && continue
         rm -f "$lien" || return 1
     done
 }

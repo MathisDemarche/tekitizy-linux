@@ -5,7 +5,7 @@
 trouver_login() {
     local matricule="$1"
 
-    getent passwd | awk -F: -v identifiant="TEKITIZY:$matricule" \
+    getent passwd | awk -F: -v identifiant="TEKITIZY-$matricule" \
         '$5 == identifiant { print $1; exit }'
 }
 
@@ -62,7 +62,7 @@ creer_utilisateur() {
         return 1
     fi
 
-    useradd -m -c "TEKITIZY:$matricule" "$login" || return 1
+    useradd -m -c "TEKITIZY-$matricule" "$login" || return 1
 
     if ! printf '%s:%s\n' "$login" "$password" | chpasswd; then
         userdel -r "$login" >/dev/null 2>&1
@@ -75,57 +75,39 @@ creer_utilisateur() {
     printf '%s\n' "$login"
 }
 
-ajouter_au_groupe() {
-    local login="$1"
-    local groupe
-    groupe=$(nettoyer_groupe "$2")
-
-    [[ -z "$groupe" ]] && return 0
-
-    creer_groupe "$groupe" || return 1
-    usermod -aG "$groupe" "$login" || return 1
-}
-
 ajouter_aux_groupes() {
     local login="$1"
     local pole="$2"
     local sous_service="$3"
     local projets="$4"
-    local groupe liste_projets projet present
-    local -a groupes
+    local groupe projet
+    local -a liste_projets
+    local -a groupes=()
 
     groupes+=("personnel")
 
     groupe=$(nettoyer_groupe "$pole")
-    [[ -n "$groupe" ]] && {
-        present=false
-        for projet in "${groupes[@]}"; do [[ "$projet" == "$groupe" ]] && present=true; done
-        [[ "$present" == false ]] && groupes+=("$groupe")
-    }
+    [[ -n "$groupe" ]] && groupes+=("$groupe")
 
     groupe=$(nettoyer_groupe "$sous_service")
-    [[ -n "$groupe" ]] && {
-        present=false
-        for projet in "${groupes[@]}"; do [[ "$projet" == "$groupe" ]] && present=true; done
-        [[ "$present" == false ]] && groupes+=("$groupe")
-    }
+    [[ -n "$groupe" ]] && groupes+=("$groupe")
 
     IFS=';' read -r -a liste_projets <<< "$projets"
+
     for projet in "${liste_projets[@]}"; do
         projet=$(retirer_espaces "$projet")
         [[ -z "$projet" ]] && continue
+
         groupe=$(nettoyer_groupe "$projet")
-        [[ -n "$groupe" ]] && {
-            present=false
-            for projet in "${groupes[@]}"; do [[ "$projet" == "$groupe" ]] && present=true; done
-            [[ "$present" == false ]] && groupes+=("$groupe")
-        }
+        [[ -n "$groupe" ]] && groupes+=("$groupe")
     done
 
+    # Créer les groupes
     for groupe in "${groupes[@]}"; do
         creer_groupe "$groupe" || return 1
     done
 
+    # Ajouter l'utilisateur aux groupes
     local IFS=','
-    usermod -G "${groupes[*]}" "$login" || return 1
+    usermod -aG "${groupes[*]}" "$login" || return 1
 }
