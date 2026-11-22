@@ -20,6 +20,17 @@ installextensions() {
     mkdir -p "$home_dir/.vscode/extensions" "$home_dir/.config/Code"
     chown -R "$login:$login" "$home_dir/.vscode" "$home_dir/.config/Code"
 
+    local settings_dir="$home_dir/.config/Code/User"
+    local settings_file="$settings_dir/settings.json"
+    mkdir -p "$settings_dir"
+
+    if [ ! -s "$settings_file" ]; then
+        printf '{\n    "extensions.verifySignature": false\n}\n' > "$settings_file"
+    elif ! grep -q '"extensions.verifySignature"' "$settings_file"; then
+        sed -i '$s/[[:space:]]*}$/,\n    "extensions.verifySignature": false\n}/' "$settings_file"
+    fi
+    chown "$login:$login" "$settings_file"
+
     # Vérifier que VS Code est installé
     if ! command -v code > /dev/null 2>&1; then
         echo "Erreur : VS Code n'est pas installé."
