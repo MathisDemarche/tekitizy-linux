@@ -37,7 +37,7 @@ if [[ ! -f "$FICHIER_CSV" ]]; then
     exit 1
 fi
 
-for commande in iconv setfacl getent groupadd useradd usermod chpasswd chage; do
+for commande in iconv setfacl getent groupadd useradd usermod chpasswd chage runuser; do
     if ! command -v "$commande" >/dev/null 2>&1; then
         afficher_erreur "Erreur : commande manquante : $commande"
         if [[ "$commande" == "setfacl" ]]; then

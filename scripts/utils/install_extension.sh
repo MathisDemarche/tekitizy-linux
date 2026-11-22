@@ -5,8 +5,6 @@
 # TEKITIZY - Installation des extensions VS Code
 # ==========================================
 
-ulimit -f unlimited
-
 installextensions() {
     local login="$1"
     local home_dir
@@ -18,6 +16,9 @@ installextensions() {
         echo "Erreur : l'utilisateur $login n'existe pas."
         return 1
     fi
+
+    mkdir -p "$home_dir/.vscode/extensions" "$home_dir/.config/Code"
+    chown -R "$login:$login" "$home_dir/.vscode" "$home_dir/.config/Code"
 
     # Vérifier que VS Code est installé
     if ! command -v code > /dev/null 2>&1; then
@@ -41,7 +42,8 @@ installextensions() {
     # Installer les extensions pour l'utilisateur
     for extension in "${extensions[@]}"; do
         echo "Installation de $extension..."
-        if sudo -u "$login" code --install-extension "$extension" --force --extensions-dir "$home_dir/.vscode/extensions" --user-data-dir "$home_dir/.config/Code"; then
+        if runuser -u "$login" -- env HOME="$home_dir" \
+            code --install-extension "$extension" --force; then
             echo "$extension : OK"
         else
             echo "Attention : impossible d'installer $extension."
