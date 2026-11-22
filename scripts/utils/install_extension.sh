@@ -5,6 +5,7 @@
 # TEKITIZY - Installation des extensions VS Code
 # ==========================================
 
+ulimit -f unlimited
 
 installextensions() {
     local login="$1"
@@ -40,7 +41,7 @@ installextensions() {
     # Installer les extensions pour l'utilisateur
     for extension in "${extensions[@]}"; do
         echo "Installation de $extension..."
-        if sudo -u "$login" code --install-extension "$extension" --force; then
+        if sudo -u "$login" code --install-extension "$extension" --force --pre-release; then
             echo "$extension : OK"
         else
             echo "Attention : impossible d'installer $extension."
