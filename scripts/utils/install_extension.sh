@@ -41,7 +41,7 @@ installextensions() {
     # Installer les extensions pour l'utilisateur
     for extension in "${extensions[@]}"; do
         echo "Installation de $extension..."
-        if sudo -u "$login" code --install-extension "$extension" --force --pre-release; then
+        if sudo -u "$login" code --install-extension "$extension" --force --extensions-dir "$home_dir/.vscode/extensions" --user-data-dir "$home_dir/.config/Code"; then
             echo "$extension : OK"
         else
             echo "Attention : impossible d'installer $extension."
