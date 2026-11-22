@@ -1,0 +1,8 @@
+{
+    "users_csv": "config/tekitizy_users.csv",
+    "utils_directory": "scripts/utils",
+    "install_apps": "scripts/install_apps.sh",
+    "tekitizy": "scripts/tekitizy.sh",
+    "systemd_service": "services/tekitizy-linux.service",
+    "service_name": "tekitizy-linux.service"
+}

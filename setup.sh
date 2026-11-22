@@ -30,60 +30,66 @@ echo "================================"
 
 cd "$DOSSIER"
 
+# Lecture de la configuration JSON
+CONFIG_JSON="config/config.json"
+
+if [ ! -f "$CONFIG_JSON" ]; then
+    echo "Erreur : configuration JSON introuvable : $CONFIG_JSON"
+    exit 1
+fi
+
+config_valeur() {
+    awk -F'"' -v cle="$1" '$2 == cle { print $4; exit }' "$CONFIG_JSON"
+}
+
+FICHIER_CSV=$(config_valeur users_csv)
+SCRIPT_INSTALL_APPS=$(config_valeur install_apps)
+SCRIPT_TEKITIZY=$(config_valeur tekitizy)
+DOSSIER_UTILS=$(config_valeur utils_directory)
+SERVICE_SYSTEMD=$(config_valeur systemd_service)
+NOM_SERVICE=$(config_valeur service_name)
+
 # 1. Vérification des fichiers
-afficher_etape "[1/7] Vérification du projet..."
+afficher_etape "[1/4] Vérification du projet..."
 
-if [ ! -f "config/tekitizy_users.csv" ]; then
-    echo "Erreur : fichier CSV introuvable."
-    exit 1
-fi
+for FICHIER in \
+    "$FICHIER_CSV" \
+    "$SCRIPT_INSTALL_APPS" \
+    "$SCRIPT_TEKITIZY" \
+    "$DOSSIER_UTILS/common.sh" \
+    "$DOSSIER_UTILS/users.sh" \
+    "$DOSSIER_UTILS/directories.sh" \
+    "$DOSSIER_UTILS/install_extension.sh" \
+    "$SERVICE_SYSTEMD"; do
+    if [ ! -f "$FICHIER" ]; then
+        echo "Erreur : fichier introuvable : $FICHIER"
+        exit 1
+    fi
+done
 
-if [ ! -f "scripts/tekitizy_manager.py" ]; then
-    echo "Erreur : gestionnaire Python introuvable."
-    exit 1
-fi
+# 2. Installation des applications
+afficher_etape "[2/4] Installation des applications..."
 
-# 2. Installation des dépendances
-afficher_etape "[2/7] Installation des dépendances..."
+bash "$SCRIPT_INSTALL_APPS"
 
-apt update
-apt install -y git python3 python3-pip python3-venv
+# 3. Création des utilisateurs et dossiers
+afficher_etape "[3/4] Création des utilisateurs et dossiers..."
 
-# 3. Installation des applications
-afficher_etape "[3/7] Installation des applications..."
-
-bash scripts/install_apps.sh
-
-# 4. Création des utilisateurs
-afficher_etape "[4/7] Création des utilisateurs..."
-
-bash scripts/create_users.sh
-
-# 5. Création des dossiers
-afficher_etape "[5/7] Création des dossiers..."
-
-bash scripts/create_directories.sh
-
-# 6. Configuration des permissions
-afficher_etape "[6/7] Configuration des permissions..."
-
-bash scripts/set_permissions.sh
+bash "$SCRIPT_TEKITIZY"
 
 # Configuration de l'umask
 echo "umask 0002" > /etc/profile.d/tekitizy.sh
 chmod 644 /etc/profile.d/tekitizy.sh
 
-# 7. Installation du service systemd
-afficher_etape "[7/7] Configuration du démarrage automatique..."
+# 4. Installation du service systemd
+afficher_etape "[4/4] Configuration du démarrage automatique..."
 
-cp services/tekitizy.service /etc/systemd/system/tekitizy.service
+sed "s|__DOSSIER__|$DOSSIER|g" "$SERVICE_SYSTEMD" \
+    > "/etc/systemd/system/$NOM_SERVICE"
 
 systemctl daemon-reload
-systemctl enable tekitizy.service
+systemctl enable "$NOM_SERVICE"
 
 echo "================================"
 echo " INSTALLATION TEKITIZY TERMINEE"
 echo "================================"
-echo "Dossier : $DOSSIER"
-echo "Service : tekitizy.service"
-echo "Démarrage automatique activé."

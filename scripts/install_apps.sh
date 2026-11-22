@@ -28,25 +28,25 @@ apt install -y \
     libreoffice-l10n-fr \
     libreoffice-help-fr \
     wget \
-    gpg \
-    ca-certificates
+    acl
+
+# Installation de Firefox
+apt install -y firefox
+
+# Installation de Google Chrome
+echo "Installation de Google Chrome..."
+
+wget -O chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+apt update
+apt install -y ./chrome.deb
+rm chrome.deb
 
 # Installation de Visual Studio Code
 echo "Installation de VS Code..."
 
-mkdir -p /etc/apt/keyrings
-
-wget -qO- https://packages.microsoft.com/keys/microsoft.asc \ | gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg
-
-echo "Types: deb
-URIs: https://packages.microsoft.com/repos/code
-Suites: stable
-Components: main
-Architectures: amd64,arm64
-Signed-By: /etc/apt/keyrings/microsoft.gpg" \
-    > /etc/apt/sources.list.d/vscode.sources
-
+wget -O code.deb https://update.code.visualstudio.com/latest/linux-deb-x64/stable
 apt update
-apt install -y code
+apt install -y ./code.deb
+rm code.deb
 
 echo "=== INSTALLATION TERMINEE ==="
