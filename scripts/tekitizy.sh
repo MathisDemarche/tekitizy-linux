@@ -4,27 +4,20 @@
 # TEKITIZY - Installation des comptes et dossiers
 # ==========================================
 
-DOSSIER="$(cd "$(dirname "$0")/.." && pwd)"
-CONFIG_JSON="$DOSSIER/config/config.json"
-
-config_valeur() {
-    awk -F'"' -v cle="$1" '$2 == cle { print $4; exit }' "$CONFIG_JSON"
-}
-
-FICHIER_CSV=$(config_valeur users_csv)
-DOSSIER_UTILS=$(config_valeur utils_directory)
-FICHIER_CSV="$DOSSIER/$FICHIER_CSV"
-DOSSIER_UTILS="$DOSSIER/$DOSSIER_UTILS"
-
 afficher_erreur() {
     printf '\033[31m%s\033[0m\n' "$*" >&2
 }
 
 # Charger les fonctions séparées.
-source "$DOSSIER_UTILS/common.sh"
-source "$DOSSIER_UTILS/users.sh"
-source "$DOSSIER_UTILS/directories.sh"
-source "$DOSSIER_UTILS/install_extension.sh"
+source ./scripts/utils/common.sh
+source ./scripts/utils/users.sh
+source ./scripts/utils/directories.sh
+source ./scripts/utils/install_extension.sh
+
+if [[ ! -f ./config/users.csv ]]; then
+    afficher_erreur "Erreur : fichier CSV introuvable : ./config/users.csv"
+    exit 1
+fi
 
 # Vérifications
 if [[ "$EUID" -ne 0 ]]; then
@@ -32,20 +25,6 @@ if [[ "$EUID" -ne 0 ]]; then
     exit 1
 fi
 
-if [[ ! -f "$FICHIER_CSV" ]]; then
-    afficher_erreur "Erreur : fichier CSV introuvable : $FICHIER_CSV"
-    exit 1
-fi
-
-for commande in iconv setfacl getent groupadd useradd usermod chpasswd chage sudo; do
-    if ! command -v "$commande" >/dev/null 2>&1; then
-        afficher_erreur "Erreur : commande manquante : $commande"
-        if [[ "$commande" == "setfacl" ]]; then
-            afficher_erreur "Installez-la avec : apt install acl"
-        fi
-        exit 1
-    fi
-done
 
 traiter_salarie() {
     local matricule="$1"
@@ -94,7 +73,7 @@ lecture_csv() {
                 afficher_erreur "Erreur de traitement : $prenom $nom"
                 erreur=1
             }
-    done < "$FICHIER_CSV"
+    done < ./config/users.csv
 
     return "$erreur"
 }
