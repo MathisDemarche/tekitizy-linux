@@ -10,12 +10,12 @@ afficher_erreur() {
 
 # Charger les fonctions séparées.
 source ./scripts/utils/common.sh
-source ./scripts/utils/users.sh
+source ./scripts/utils/tekitizy_users.sh
 source ./scripts/utils/directories.sh
 source ./scripts/utils/install_extension.sh
 
-if [[ ! -f ./config/users.csv ]]; then
-    afficher_erreur "Erreur : fichier CSV introuvable : ./config/users.csv"
+if [[ ! -f ./config/tekitizy_users.csv ]]; then
+    afficher_erreur "Erreur : fichier CSV introuvable : ./config/tekitizy_users.csv"
     exit 1
 fi
 
@@ -73,7 +73,7 @@ lecture_csv() {
                 afficher_erreur "Erreur de traitement : $prenom $nom"
                 erreur=1
             }
-    done < ./config/users.csv
+    done < ./config/tekitizy_users.csv
 
     return "$erreur"
 }
