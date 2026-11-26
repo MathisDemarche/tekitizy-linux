@@ -2,64 +2,58 @@
 #!/bin/bash
 
 # ==========================================
-# TEKITIZY - Installation des extensions VS Code
+# TEKITIZY - Extensions VS Code
 # ==========================================
+
+COMMON="/opt/tekitizy/vscode/extensions"
+
+EXTENSIONS=(
+    "ms-vscode.cpptools"
+    "ms-python.python"
+    "ms-python.vscode-pylance"
+    "esbenp.prettier-vscode"
+    "dbaeumer.vscode-eslint"
+    "ritwickdey.liveserver"
+    "ms-vscode.cmake-tools"
+)
 
 installextensions() {
     local login="$1"
-    local home_dir
+    local home
 
-    # Récupérer le dossier personnel de l'utilisateur
-    home_dir=$(getent passwd "$login" | cut -d: -f6)
+    home=$(getent passwd "$login" | cut -d: -f6)
 
-    if [ -z "$home_dir" ]; then
-        echo "Erreur : l'utilisateur $login n'existe pas."
+    if [[ -z "$home" ]]; then
+        echo "Utilisateur introuvable : $login"
         return 1
     fi
 
-    mkdir -p "$home_dir/.vscode/extensions" "$home_dir/.config/Code"
-    chown -R "$login:$login" "$home_dir/.vscode" "$home_dir/.config/Code"
-
-    local settings_dir="$home_dir/.config/Code/User"
-    local settings_file="$settings_dir/settings.json"
-    mkdir -p "$settings_dir"
-
-    if [ ! -s "$settings_file" ]; then
-        printf '{\n    "extensions.verifySignature": false\n}\n' > "$settings_file"
-    elif ! grep -q '"extensions.verifySignature"' "$settings_file"; then
-        sed -i '$s/[[:space:]]*}$/,\n    "extensions.verifySignature": false\n}/' "$settings_file"
-    fi
-    chown "$login:$login" "$settings_file"
-
-    # Vérifier que VS Code est installé
-    if ! command -v code > /dev/null 2>&1; then
-        echo "Erreur : VS Code n'est pas installé."
+    if ! command -v code >/dev/null 2>&1; then
+        echo "VS Code non installé."
         return 1
     fi
 
-    echo "Installation des extensions pour $login..."
+    # Installer les extensions une seule fois
+    mkdir -p "$COMMON"
 
-    # Liste des extensions à installer
-    local extensions=(
-        "ms-vscode.cpptools"
-        "ms-python.python"
-        "ms-python.vscode-pylance"
-        "esbenp.prettier-vscode"
-        "dbaeumer.vscode-eslint"
-        "ritwickdey.liveserver"
-        "ms-vscode.cmake-tools"
-    )
-
-    # Installer les extensions pour l'utilisateur
-    for extension in "${extensions[@]}"; do
-        echo "Installation de $extension..."
-        if sudo -u "$login" env HOME="$home_dir" \
-            code --install-extension "$extension" --force; then
-            echo "$extension : OK"
-        else
-            echo "Attention : impossible d'installer $extension."
-        fi
+    for ext in "${EXTENSIONS[@]}"; do
+        code --extensions-dir "$COMMON" \
+             --install-extension "$ext" --force
     done
 
-    echo "Installation des extensions terminée pour $login."
+    # Configurer l'utilisateur
+    mkdir -p "$home/.config/Code/User"
+
+    echo '{
+    "extensions.verifySignature": false
+}' > "$home/.config/Code/User/settings.json"
+
+    chown -R "$login:$login" "$home/.config/Code"
+
+    # Utiliser les extensions communes
+    mkdir -p "$home/.vscode"
+
+    ln -sfn "$COMMON" "$home/.vscode/extensions"
+
+    echo "Extensions configurées pour $login."
 }
