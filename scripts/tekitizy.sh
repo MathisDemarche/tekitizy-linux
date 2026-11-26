@@ -10,7 +10,7 @@ afficher_erreur() {
 
 # Charger les fonctions séparées.
 source ./scripts/utils/common.sh
-source ./scripts/utils/tekitizy_users.sh
+source ./scripts/utils/users.sh
 source ./scripts/utils/directories.sh
 source ./scripts/utils/install_extension.sh
 
