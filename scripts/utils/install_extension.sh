@@ -33,30 +33,23 @@ installextensions() {
         return 1
     fi
 
-    # Installer les extensions une seule fois
-    mkdir -p "$COMMON"
-    user_data_dir=$(mktemp -d "${TMPDIR:-/tmp}/tekitizy-vscode.XXXXXX") || return 1
+    # La CLI doit utiliser les paramètres du compte cible pendant l'installation.
+    mkdir -p "$COMMON" "$home/.config/Code/User"
+    user_data_dir="$home/.config/Code"
+    printf '{\n    "extensions.verifySignature": false\n}\n' \
+        > "$user_data_dir/User/settings.json"
 
     for ext in "${EXTENSIONS[@]}"; do
         if ! code --no-sandbox \
                   --user-data-dir "$user_data_dir" \
                   --extensions-dir "$COMMON" \
                   --install-extension "$ext" --force; then
-            rm -rf -- "$user_data_dir"
+            chown -R "$login:$login" "$user_data_dir"
             return 1
         fi
     done
 
-    rm -rf -- "$user_data_dir" || return 1
-
-    # Configurer l'utilisateur
-    mkdir -p "$home/.config/Code/User"
-
-    echo '{
-    "extensions.verifySignature": false
-}' > "$home/.config/Code/User/settings.json"
-
-    chown -R "$login:$login" "$home/.config/Code"
+    chown -R "$login:$login" "$user_data_dir"
 
     # Utiliser les extensions communes
     mkdir -p "$home/.vscode"
