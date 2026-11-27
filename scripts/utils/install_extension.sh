@@ -57,3 +57,4 @@ installextensions() {
 
     echo "Extensions configurées pour $login."
 }
+
